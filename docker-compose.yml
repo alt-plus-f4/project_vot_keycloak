@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mariadb
+      - DB_USER=root
+      - DB_PASSWORD=admin
+      - DB_DATABASE=posts
+      - KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
+      - KEYCLOAK_REALM=myrealm
+    ports:
+      - 3001:3001
+    depends_on:
+      - mariadb
+      - keycloak
+
+  frontend:
+    build: ./frontend
+    environment:
+      - REACT_APP_KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
+      - REACT_APP_KEYCLOAK_REALM=myrealm
+      - REACT_APP_CLIENT_ID=myclient
+      - REACT_APP_USERNAME=user
+      - REACT_APP_PASSWORD=password
+    ports:
+      - 3000:80
+    depends_on:
+      - backend
+      - keycloak
+
+  mariadb:
+    image: mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_DATABASE=posts
+    ports:
+      - 3306:3306
+    volumes:
+      - db_data:/var/lib/mysql
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.0
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - 8080:8080
+    volumes:
+      - ./keycloak-config:/opt/keycloak/data/import
+    command: start-dev --import-realm
+
+volumes:
+  db_data:

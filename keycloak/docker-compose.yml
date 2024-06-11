@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=admin
+    ports:
+      - 8080:8080
+    volumes:
+      - ./keycloak-config:/opt/jboss/keycloak/imports
+    command:
+      - '-Dkeycloak.import=/opt/jboss/keycloak/imports/realm-export.json'
+  mariadb:
+    image: mariadb
+    environment:
+      - MYSQL_ROOT_PASSWORD=admin
+      - MYSQL_DATABASE=keycloak
+    ports:
+      - 3306:3306
