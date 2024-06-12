@@ -14,7 +14,11 @@ const App = () => {
 
   const handlePost = async () => {
     try {
-      await axios.post('/posts', { title });
+      await axios.post('http://localhost:3001/posts', { title }, {
+        headers: {
+          'Authorization': `Bearer ${kc.token}`
+        }
+      });
       setInfoMessage('Post created successfully!');
     } catch (error) {
       console.error('Post creation failed:', error);
