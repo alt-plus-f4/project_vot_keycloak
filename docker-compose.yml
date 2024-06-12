@@ -3,43 +3,78 @@ version: '3.8'
 services:
   backend:
     build: ./backend
+    ports:
+      - 3001:3001
+    depends_on:
+      - mariadb2
+      - keycloak
     environment:
       - NODE_ENV=production
-      - DB_HOST=mariadb
+      - DB_HOST=localhost
       - DB_USER=root
       - DB_PASSWORD=admin
       - DB_DATABASE=posts
       - KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
       - KEYCLOAK_REALM=myrealm
-    ports:
-      - 3001:3001
-    depends_on:
-      - mariadb
-      - keycloak
 
   frontend:
     build: ./frontend
+    ports:
+      - 3000:80
+    depends_on:
+      - backend
+      - keycloak
     environment:
       - REACT_APP_KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
       - REACT_APP_KEYCLOAK_REALM=myrealm
       - REACT_APP_CLIENT_ID=myclient
       - REACT_APP_USERNAME=user
       - REACT_APP_PASSWORD=password
-    ports:
-      - 3000:80
-    depends_on:
-      - backend
-      - keycloak
 
-  mariadb:
-    image: mariadb
-    environment:
-      - MYSQL_ROOT_PASSWORD=admin
-      - MYSQL_DATABASE=posts
+  mariadb1:
+    image: mariadb:10.5
+    container_name: mariadb1
     ports:
-      - 3306:3306
+      - "3307:3306"
+    environment:
+      - MARIADB_PASSWORD=admin
+      - MARIADB_DATABASE=posts
+      - MARIADB_ROOT_PASSWORD=admin
     volumes:
-      - db_data:/var/lib/mysql
+      - ./mariadb1/galera.cnf:/etc/mysql/mariadb.conf.d/galera.cnf
+    cap_add:
+      - all
+    networks:
+      - mariadb
+
+  mariadb2:
+    image: mariadb:10.5
+    container_name: mariadb2
+    ports:
+      - "3308:3306"
+    environment:
+      - MARIADB_PASSWORD=admin
+      - MARIADB_DATABASE=posts
+      - MARIADB_ROOT_PASSWORD=admin
+    volumes:
+      - ./mariadb2/galera.cnf:/etc/mysql/mariadb.conf.d/galera.cnf
+    cap_add:
+      - all
+    networks:
+      - mariadb
+    depends_on:
+      - mariadb1
+  
+  db-loadbalancer:
+    image: mariadb/maxscale:24.02.1
+    ports:
+      - "3306:3306"
+      - "8989:8989"
+    depends_on:
+      - mariadb1
+      - mariadb2
+    networks:
+      - mariadb
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0.0
@@ -54,3 +89,8 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  mariadb:
+    driver: bridge
+
