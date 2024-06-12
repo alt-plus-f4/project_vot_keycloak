@@ -1,56 +1,43 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { ReactKeycloakProvider, useKeycloak } from '@react-keycloak/web';
-import keycloak from './keycloak';
+import { getAuthenticatedInstance } from './auth';
 
 const App = () => {
-  const { initialized } = useKeycloak();
   const [title, setTitle] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
 
-  const handleLogin = async () => {
-    if (!keycloak.authenticated) {
-      keycloak.login();
-    }
+  const kc = getAuthenticatedInstance();
+
+  const handleLogout = () => {
+    kc.logout().then(() => kc.logout());
   };
 
   const handlePost = async () => {
     try {
-      await axios.post('/posts', { title }, {
-        headers: {
-          Authorization: `Bearer ${keycloak.token}`
-        }
-      });
+      await axios.post('/posts', { title });
+      setInfoMessage('Post created successfully!');
     } catch (error) {
       console.error('Post creation failed:', error);
+      setInfoMessage('Post creation failed.');
     }
   };
 
-  if (!initialized) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <div>
-      {!keycloak.authenticated ? (
-        <button onClick={handleLogin}>Login</button>
-      ) : (
         <div>
+          <button onClick={handleLogout}>Logout</button>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
           <button onClick={handlePost}>Create Post</button>
+          <div>
+            <p>{infoMessage}</p>
+          </div>
         </div>
-      )}
     </div>
   );
 };
 
-const AppWrapper = () => (
-  <ReactKeycloakProvider authClient={keycloak}>
-    <App />
-  </ReactKeycloakProvider>
-);
-
-export default AppWrapper;
+export default App;

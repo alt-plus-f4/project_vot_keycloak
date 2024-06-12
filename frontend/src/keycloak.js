@@ -1,5 +1,15 @@
 import Keycloak from 'keycloak-js';
 
-const keycloak = new Keycloak();
+let keycloakInstance;
 
-export default keycloak;
+export function getKeycloakInstance() {
+  if (!keycloakInstance) {
+    keycloakInstance = new Keycloak({
+        url: 'http://localhost:8080/',
+        realm: 'master',
+        clientId: 'react-client',
+    });
+  }
+
+  return keycloakInstance;
+}
