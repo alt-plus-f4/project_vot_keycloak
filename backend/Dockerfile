@@ -10,5 +10,5 @@ FROM node:14
 WORKDIR /app
 COPY --from=build /app .
 ENV NODE_ENV production
-EXPOSE 3001
+EXPOSE 3002
 CMD ["npm", "start"]

@@ -10,26 +10,41 @@ const app = express();
 app.use(cors({ origin: 'http://localhost:3000' }));
 
 const pool = mariadb.createPool({
-  host: process.env.DB_HOST,
+  // host: process.env.DB_HOST,
+  host: 'db-loadbalancer',
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
+  connectTimeout: 10000
 });
+
+pool.getConnection()
+  .then(conn => {
+    console.log('Connected to MariaDB');
+    conn.release();
+  })
+  .catch(err => {
+    console.log('Unable to connect to MariaDB:', err);
+  });
 
 app.use(bodyParser.json());
 
-const getKeycloakPublicKey = async () => {
+const getKeycloakPublicKey = async (kid) => {
   try {
-    
-    const link = `http://localhost:8080/realms/master/protocol/openid-connect/certs`;
+    const link = `http://keycloak:8080/realms/master/protocol/openid-connect/certs`;
 
+    console.log('Getting Keycloak public key from:', link);
     const response = await axios.get(link);
     console.log(response.data);
 
-    const key = response.data.keys[0].x5c[0];
-    return `-----BEGIN CERTIFICATE-----\n${key}\n-----END CERTIFICATE-----`;
+    const key = response.data.keys.find(k => k.kid === kid);
+    if (!key) {
+      throw new Error('Key ID not found');
+    }
+
+    return `-----BEGIN CERTIFICATE-----\n${key.x5c[0]}\n-----END CERTIFICATE-----`;
   } catch (error) {
-    throw new Error('Unable to get Keycloak public key');
+    throw new Error('Unable to get Keycloak public key: ' + error.message);
   }
 };
 
@@ -37,8 +52,11 @@ const verifyToken = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
     const token = req.headers.authorization.split(' ')[1];
     try {
-      const publicKey = await getKeycloakPublicKey();
-      await jwt.verify(token, publicKey, { algorithms: ['RS256'] });
+      const decodedToken = jwt.decode(token, { complete: true });
+      const kid = decodedToken.header.kid;
+      const publicKey = await getKeycloakPublicKey(kid);
+
+      jwt.verify(token, publicKey, { algorithms: ['RS256'] });
       console.log('Token is valid');
       next();
     } catch (error) {
@@ -75,7 +93,7 @@ app.post('/posts', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
