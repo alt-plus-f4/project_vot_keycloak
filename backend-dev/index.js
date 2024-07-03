@@ -10,33 +10,18 @@ const app = express();
 app.use(cors({ origin: 'http://localhost:3000' }));
 
 const pool = mariadb.createPool({
-  host: process.env.DB_HOST,
+  // host: process.env.DB_HOST,
+  host: 'db-loadbalancer',
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   connectTimeout: 10000
 });
 
-const createPostsTable = async () => {
-  try {
-    const conn = await pool.getConnection();
-    await conn.query(`
-      CREATE TABLE IF NOT EXISTS posts (
-        id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
-        title VARCHAR(255)
-      )
-    `);
-    console.log('Table posts is ready');
-  } catch (err) {
-    console.error('Unable to create table posts:', err);
-  }
-};
-
 pool.getConnection()
   .then(conn => {
     console.log('Connected to MariaDB');
     conn.release();
-    createPostsTable();
   })
   .catch(err => {
     console.log('Unable to connect to MariaDB:', err);
@@ -46,7 +31,7 @@ app.use(bodyParser.json());
 
 const getKeycloakPublicKey = async (kid) => {
   try {
-    const link = `http://localhost:8080/realms/master/protocol/openid-connect/certs`;
+    const link = `http://keycloak:8080/realms/master/protocol/openid-connect/certs`;
 
     console.log('Getting Keycloak public key from:', link);
     const response = await axios.get(link);
@@ -108,7 +93,7 @@ app.post('/posts', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3010;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

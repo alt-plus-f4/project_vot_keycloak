@@ -17,6 +17,22 @@ services:
       - KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
       - KEYCLOAK_REALM=myrealm
 
+  backend-dev:
+      build: ./backend
+      ports:
+        - 3010:3010
+      depends_on:
+        - mariadb2
+        - keycloak
+      environment:
+        - NODE_ENV=production
+        - DB_HOST=db-loadbalancer
+        - DB_USER=root
+        - DB_PASSWORD=admin
+        - DB_DATABASE=posts
+        - KEYCLOAK_URL=http://keycloak:8080/realms/myrealm
+        - KEYCLOAK_REALM=myrealm
+
   frontend:
     build: ./frontend
     ports:
